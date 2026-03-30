@@ -19,10 +19,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
-from .context import CHUNK_FLUSH_THRESHOLD, ContextGenerator, LlmChunkMsg, stream_msg
+from .context import CHUNK_FLUSH_THRESHOLD, ContextGenerator, LlmChunkMsg, stream_msg, text_msg
 from .decryption import WXBizJsonMsgCrypt
 from .models import AgentSession
 from ..api.bkaidev import BkAiDevApi
+from ..context.message import MsgType
 from ..utils.rabbitmq import rabbitmq_client
 
 logger = getLogger(__name__)
@@ -90,6 +91,15 @@ class WxAiBotViewSet(ViewSet):
 
     def _reply_event(self, payload: dict) -> dict:
         """处理事件消息"""
+        try:
+            context = ContextGenerator(payload).generate()
+            if context.message.event == MsgType.EnterChat.value:
+                agent_config = BkAiDevApi().retrieve_agent_config(settings.BKPAAS_APP_CODE)
+                welcome_message = agent_config.get("conversation_settings", {}).get("opening_remark")
+                if welcome_message:
+                    return text_msg(welcome_message)
+        except Exception as e:
+            logger.exception(f"处理事件消息失败: {e}")
         return stream_msg("", True, uuid.uuid4().hex)
 
     def _get_or_create_thread_id(self, group_id: str) -> str:

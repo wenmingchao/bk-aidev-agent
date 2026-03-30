@@ -14,3 +14,6 @@ class BkAiDevApi:
         return self.api.call_action(
             "openapi/aidev/resource/v1/qyweixin/convert_to_userid/", "POST", json={"openid": openid}
         )
+
+    def retrieve_agent_config(self, agent_code: str):
+        return self.api.call_action(f"openapi/aidev/resource/v1/agent/{agent_code}/", "GET")
